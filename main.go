@@ -2,9 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
-	"io"
 	"os"
 )
 
@@ -12,10 +10,25 @@ type Config struct {
     TaskPath string `json:"task_path"`
 }
 
+type Command struct {
+    Name string
+    Args string
+}
+
+var (
+    TaskAdd = Command{"add", "<task name> <due date>"}
+    TaskRemove = Command{"remove", "<task name>"}
+    TaskChangeDate = Command{"change_date", "<task name> <due date>"}
+    TaskList = Command{"list", "list"}
+    TaskConfig = Command{"config", "<setting> <new value>"}
+    TaskComplete = Command{"complete", "<task name>"}
+    TaskUncomplete = Command{"uncomplete", "<task name>"}
+)
+
 const DefaultConfigFilePath = ".lomzem.taskapp.config.json"
 const DefaultTaskPath = ".lomzem.taskapp.tasks.json"
 
-func make_config_file() {
+func makeConfigFile() {
     _, err := os.Stat(DefaultConfigFilePath)
     if os.IsNotExist(err) {
         config := Config{ TaskPath: DefaultTaskPath }
@@ -39,7 +52,7 @@ func make_config_file() {
     }
 }
 
-func read_config_file() {
+func readConfigFile() {
     file, err := os.Open(DefaultConfigFilePath)
     if err != nil {
         fmt.Println(err)
@@ -58,31 +71,33 @@ func read_config_file() {
 
 }
 
-func change_config(config Config) {
+func changeConfig(config Config) {
 }
 
-func get_input(reader io.Reader, args ...string) (string, error) {
-    fmt.Println(args)
-    // if len(args) > 0 {}
-    return "", nil
+func list_commands() {
+    TaskAdd.printUsage()
+    TaskRemove.printUsage()
+    TaskChangeDate.printUsage()
+    TaskList.printUsage()
+    TaskConfig.printUsage()
+    TaskComplete.printUsage()
+    TaskUncomplete.printUsage()
+}
+
+func (cmd Command) printUsage() {
+    fmt.Printf("program.exe %s %s", cmd.Name, cmd.Args)
 }
 
 func main() {
-    config := flag.Bool("config", false, "Change config for task app")
-    flag.Parse()
-
-    switch {
-    case *config:
-        args, err := get_input(os.Stdin, flag.Args()...)
-        if err != nil {
-            fmt.Println(err)
-            os.Exit(1)
-        }
-        println(args)
-        // fmt.Printf(config)
-    }
-
-	// make_config_file()
-    // read_config_file()
-    // task_app config taskpath string
+    // if len(os.Args) == 1 {
+    //     list_commands()
+    // }
+    //
+    // switch os.Args[1] {
+    // case "add":
+    //     args, err := os.Args[:2]
+    // default:
+    //     fmt.Println("Invalid command!")
+    //     list_commands()
+    // }
 }
