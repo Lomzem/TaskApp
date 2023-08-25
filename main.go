@@ -50,14 +50,14 @@ func readTasks(filePath string) TaskList {
     return TaskList{}
 }
 
-func (tasks *TaskList) listTasks() {
+func (tasks TaskList) listTasks() {
     fmt.Println("Tasks:\n")
-    if len(*tasks) == 0 {
+    if len(tasks) == 0 {
         fmt.Println("No tasks to show!")
         return
     }
 
-    for i, task := range *tasks {
+    for i, task := range tasks {
         switch task.Completed {
         case false: {fmt.Printf("%s) %s\n", strconv.Itoa(i), task.Name)}
         case true: {fmt.Printf("%s) [%s]\n", strconv.Itoa(i), task.Name)}
