@@ -4,100 +4,211 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 )
 
-type Config struct {
-    TaskPath string `json:"task_path"`
+const taskFilePath = ".lomzem.taskapp.tasks"
+
+type Task struct {
+	Name string
+    Completed bool
 }
 
-type Command struct {
-    Name string
-    Args string
+type TaskList []Task
+
+func checkError(err error) {
+    if err != nil {
+        panic(err)
+    }
 }
 
-var (
-    TaskAdd = Command{"add", "<task name> <due date>"}
-    TaskRemove = Command{"remove", "<task name>"}
-    TaskChangeDate = Command{"change_date", "<task name> <due date>"}
-    TaskList = Command{"list", "list"}
-    TaskConfig = Command{"config", "<setting> <new value>"}
-    TaskComplete = Command{"complete", "<task name>"}
-    TaskUncomplete = Command{"uncomplete", "<task name>"}
-)
-
-const DefaultConfigFilePath = ".lomzem.taskapp.config.json"
-const DefaultTaskPath = ".lomzem.taskapp.tasks.json"
-
-func makeConfigFile() {
-    _, err := os.Stat(DefaultConfigFilePath)
+func makeTaskFile() {
+    _, err := os.Stat(taskFilePath)
     if os.IsNotExist(err) {
-        config := Config{ TaskPath: DefaultTaskPath }
-        config_bytes, err := json.Marshal(config)
 
-        if err != nil {
-            fmt.Println(err)
-        }
-
-        file, err := os.Create(DefaultConfigFilePath)
+        file, err := os.Create(taskFilePath)
         if err != nil {
             fmt.Println(err)
             return
         }
         defer file.Close()
 
-        _, err = file.Write(config_bytes)
-        if err != nil {
-            fmt.Println(err)
+    }
+}
+
+func readTasks(filePath string) TaskList {
+    fileContents, err := os.ReadFile(filePath)
+    checkError(err)
+
+    if len(fileContents) != 0 {
+        var jsonData TaskList
+        err = json.Unmarshal(fileContents, &jsonData)
+        checkError(err)
+
+        return jsonData
+    }
+    return TaskList{}
+}
+
+func (tasks *TaskList) listTasks() {
+    fmt.Println("Tasks:\n")
+    if len(*tasks) == 0 {
+        fmt.Println("No tasks to show!")
+        return
+    }
+
+    for i, task := range *tasks {
+        switch task.Completed {
+        case false: {fmt.Printf("%s) %s\n", strconv.Itoa(i), task.Name)}
+        case true: {fmt.Printf("%s) [%s]\n", strconv.Itoa(i), task.Name)}
         }
     }
 }
 
-func readConfigFile() {
-    file, err := os.Open(DefaultConfigFilePath)
-    if err != nil {
-        fmt.Println(err)
+func (tasks *TaskList) addTask(taskName string) {
+    newTask := Task{
+        taskName,
+        false,
+    }
+
+    *tasks = append(*tasks, newTask)
+    tasks.writeFile()
+    fmt.Println("Successfully added ", taskName)
+    // }
+}
+
+func (tasks *TaskList) removeTask(index int) {
+    if index < 0 || index >= len(*tasks) {
+        fmt.Println("Invalid index!")
         return
     }
-    defer file.Close()
 
-    var config Config
+    taskName := (*tasks)[index].Name
+    *tasks = append((*tasks)[:index], (*tasks)[index+1:]...)
+    tasks.writeFile()
+    fmt.Println("Sucessfully removed the task:", taskName)
+}
 
-    decoder := json.NewDecoder(file)
-    if err := decoder.Decode(&config); err != nil {
-        fmt.Println(err)
+func (tasks *TaskList) markCompleted(index int) {
+    if index < 0 || index >= len(*tasks) {
+        fmt.Println("Invalid index!")
+        return
     }
 
-    fmt.Println(config)
-
+    taskName := (*tasks)[index].Name
+    (*tasks)[index].Completed = true
+    tasks.writeFile()
+    fmt.Printf("Sucessfully marked the task \"%s\" as completed!", taskName)
 }
 
-func changeConfig(config Config) {
+func (tasks *TaskList) markUncompleted(index int) {
+    if index < 0 || index >= len(*tasks) {
+        fmt.Println("Invalid index!")
+        return
+    }
+
+    taskName := (*tasks)[index].Name
+    (*tasks)[index].Completed = false
+    tasks.writeFile()
+    fmt.Printf("Sucessfully marked the task \"%s\" as uncompleted", taskName)
 }
 
-func list_commands() {
-    TaskAdd.printUsage()
-    TaskRemove.printUsage()
-    TaskChangeDate.printUsage()
-    TaskList.printUsage()
-    TaskConfig.printUsage()
-    TaskComplete.printUsage()
-    TaskUncomplete.printUsage()
+func (tasks *TaskList) writeFile() {
+    taskBytes, err := json.Marshal(tasks)
+    checkError(err)
+    os.WriteFile(taskFilePath, taskBytes, 0644)
 }
 
-func (cmd Command) printUsage() {
-    fmt.Printf("program.exe %s %s", cmd.Name, cmd.Args)
+func listCommands() {
+    fmt.Println("Task App\n")
+    fmt.Println("Available commands:")
+    fmt.Println("taskapp list")
+    fmt.Println("taskapp add <taskName>")
+    fmt.Println("taskapp remove <index>")
+    fmt.Println("taskapp complete <index>")
+    fmt.Println("taskapp uncomplete <index>")
 }
 
 func main() {
-    // if len(os.Args) == 1 {
-    //     list_commands()
-    // }
-    //
-    // switch os.Args[1] {
-    // case "add":
-    //     args, err := os.Args[:2]
-    // default:
-    //     fmt.Println("Invalid command!")
-    //     list_commands()
-    // }
-}
+    makeTaskFile()
+    if len(os.Args) == 1 {
+        listCommands()
+        return
+    }
+
+    tasks := readTasks(taskFilePath)
+
+    switch os.Args[1] {
+
+    case "list":
+        tasks.listTasks()
+
+    case "add":
+        switch len(os.Args) {
+
+        case 2:
+            fmt.Println("Task name required!")
+            return
+
+        case 3:
+            tasks.addTask(os.Args[2])
+
+        default:
+            fmt.Println("Invalid number of arguments!")
+        }
+
+    case "remove":
+        switch len(os.Args) {
+        case 2:
+            fmt.Println("Index of task required!")
+            return
+
+        case 3:
+            intInput, err := strconv.Atoi(os.Args[2])
+            if err != nil {
+                fmt.Println("Error: did not provide an integer index for task!")
+            }
+            tasks.removeTask(intInput)
+
+        default:
+            fmt.Println("Invalid number of arguments!")
+        }
+
+    case "complete":
+        switch len(os.Args) {
+        case 2:
+            fmt.Println("Index of task required!")
+            return
+
+        case 3:
+            intInput, err := strconv.Atoi(os.Args[2])
+            if err != nil {
+                fmt.Println("Error: did not provide an integer index for task!")
+            }
+            tasks.markCompleted(intInput)
+
+        default:
+            fmt.Println("Invalid number of arguments!")
+        }
+
+        case "uncomplete":
+            switch len(os.Args) {
+            case 2:
+                fmt.Println("Index of task required!")
+                return
+
+            case 3:
+                intInput, err := strconv.Atoi(os.Args[2])
+                if err != nil {
+                    fmt.Println("Error: did not provide an integer index for task!")
+                }
+                tasks.markUncompleted(intInput)
+
+            default:
+                fmt.Println("Invalid number of arguments!")
+            }
+
+        default:
+            listCommands()
+        }
+    }
