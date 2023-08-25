@@ -51,7 +51,7 @@ func readTasks(filePath string) TaskList {
 }
 
 func (tasks TaskList) listTasks() {
-    fmt.Println("Tasks:\n")
+    fmt.Print("Tasks:\n\n")
     if len(tasks) == 0 {
         fmt.Println("No tasks to show!")
         return
@@ -113,14 +113,14 @@ func (tasks *TaskList) markUncompleted(index int) {
     fmt.Printf("Sucessfully marked the task \"%s\" as uncompleted", taskName)
 }
 
-func (tasks *TaskList) writeFile() {
+func (tasks TaskList) writeFile() {
     taskBytes, err := json.Marshal(tasks)
     checkError(err)
     os.WriteFile(taskFilePath, taskBytes, 0644)
 }
 
 func listCommands() {
-    fmt.Println("Task App\n")
+    fmt.Print("Task App\n\n")
     fmt.Println("Available commands:")
     fmt.Println("taskapp list")
     fmt.Println("taskapp add <taskName>")
